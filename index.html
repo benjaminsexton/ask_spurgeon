@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ask Spurgeon</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink:       #1a1208;
+      --parchment: #f5eedc;
+      --cream:     #faf6ed;
+      --gold:      #9a7b2e;
+      --gold-light:#c9a84c;
+      --rust:      #7a3b1e;
+      --faded:     #7a6e5a;
+      --rule:      #d4c49a;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--cream);
+      color: var(--ink);
+      font-family: 'Crimson Text', Georgia, serif;
+      font-size: 18px;
+      line-height: 1.7;
+    }
+
+    /* ── Noise texture overlay ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Layout ── */
+    .page {
+      position: relative;
+      z-index: 1;
+      max-width: 740px;
+      margin: 0 auto;
+      padding: 60px 32px 100px;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 52px;
+      animation: fadeDown 0.8s ease both;
+    }
+
+    .header-rule {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .header-rule::before,
+    .header-rule::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--rule), transparent);
+    }
+    .header-rule span {
+      color: var(--gold);
+      font-size: 22px;
+    }
+
+    h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(2.4rem, 6vw, 3.6rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      color: var(--ink);
+    }
+
+    .subtitle {
+      margin-top: 12px;
+      font-style: italic;
+      color: var(--faded);
+      font-size: 1.05rem;
+    }
+
+    /* ── Search box ── */
+    .search-wrap {
+      margin-bottom: 48px;
+      animation: fadeUp 0.8s 0.2s ease both;
+    }
+
+    .search-box {
+      display: flex;
+      gap: 0;
+      border: 1.5px solid var(--rule);
+      border-radius: 3px;
+      overflow: hidden;
+      background: white;
+      box-shadow: 0 2px 16px rgba(26,18,8,0.07);
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    .search-box:focus-within {
+      border-color: var(--gold);
+      box-shadow: 0 4px 24px rgba(154,123,46,0.15);
+    }
+
+    #query {
+      flex: 1;
+      border: none;
+      outline: none;
+      padding: 16px 20px;
+      font-family: 'Crimson Text', Georgia, serif;
+      font-size: 1.1rem;
+      background: transparent;
+      color: var(--ink);
+    }
+    #query::placeholder { color: #b5a98a; }
+
+    #submit {
+      border: none;
+      background: var(--gold);
+      color: white;
+      padding: 16px 28px;
+      font-family: 'Crimson Text', Georgia, serif;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #submit:hover { background: var(--rust); }
+    #submit:disabled { background: var(--rule); cursor: not-allowed; }
+
+    /* ── Suggested prompts ── */
+    .prompts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .prompt-chip {
+      font-family: 'Crimson Text', Georgia, serif;
+      font-size: 0.92rem;
+      font-style: italic;
+      color: var(--faded);
+      border: 1px solid var(--rule);
+      border-radius: 2px;
+      padding: 4px 12px;
+      cursor: pointer;
+      background: transparent;
+      transition: all 0.15s;
+    }
+    .prompt-chip:hover {
+      background: var(--parchment);
+      color: var(--gold);
+      border-color: var(--gold-light);
+    }
+
+    /* ── Loading ── */
+    #loading {
+      display: none;
+      text-align: center;
+      padding: 40px 0;
+      color: var(--faded);
+      font-style: italic;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    /* ── Results ── */
+    #results { animation: fadeUp 0.5s ease both; }
+
+    .result-summary {
+      background: var(--parchment);
+      border-left: 3px solid var(--gold);
+      padding: 20px 24px;
+      margin-bottom: 36px;
+      border-radius: 0 2px 2px 0;
+      font-size: 1.05rem;
+      line-height: 1.75;
+    }
+
+    .quotes-label {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 0.8rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 20px;
+    }
+
+    .quote-card {
+      border: 1px solid var(--rule);
+      border-radius: 3px;
+      padding: 24px 28px;
+      margin-bottom: 20px;
+      background: white;
+      box-shadow: 0 1px 8px rgba(26,18,8,0.04);
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .quote-card:hover {
+      box-shadow: 0 4px 20px rgba(26,18,8,0.09);
+      transform: translateY(-1px);
+    }
+
+    .quote-mark {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 3rem;
+      line-height: 0.5;
+      color: var(--gold-light);
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    .quote-text {
+      font-style: italic;
+      font-size: 1.08rem;
+      line-height: 1.8;
+      color: var(--ink);
+      margin-bottom: 16px;
+    }
+
+    .quote-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 20px;
+      font-size: 0.85rem;
+      color: var(--faded);
+      border-top: 1px solid var(--rule);
+      padding-top: 12px;
+    }
+    .quote-meta strong {
+      color: var(--rust);
+      font-style: normal;
+      font-weight: 600;
+    }
+
+    /* ── Error ── */
+    .error-msg {
+      color: var(--rust);
+      font-style: italic;
+      text-align: center;
+      padding: 24px;
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      margin-top: 64px;
+      color: var(--rule);
+      font-size: 0.85rem;
+      font-style: italic;
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.5; }
+      50%       { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="header-rule"><span>✦</span></div>
+    <h1>Ask Spurgeon</h1>
+    <p class="subtitle">Search 3,500 sermons from the Prince of Preachers</p>
+  </header>
+
+  <div class="search-wrap">
+    <div class="search-box">
+      <input
+        id="query"
+        type="text"
+        placeholder="Ask Spurgeon AI a question"
+        autocomplete="off"
+      />
+      <button id="submit">Ask</button>
+    </div>
+    <div class="prompts">
+      <button class="prompt-chip" onclick="setQuery(this)">suffering and God's sovereignty</button>
+      <button class="prompt-chip" onclick="setQuery(this)">assurance of salvation</button>
+      <button class="prompt-chip" onclick="setQuery(this)">Romans 8:28</button>
+      <button class="prompt-chip" onclick="setQuery(this)">prayer and faith</button>
+      <button class="prompt-chip" onclick="setQuery(this)">the cross of Christ</button>
+    </div>
+  </div>
+
+  <div id="loading">Searching the sermons of Charles Spurgeon…</div>
+  <div id="results"></div>
+
+  <footer>
+    Charles H. Spurgeon · 1834–1892 · Metropolitan Tabernacle, London
+  </footer>
+
+</div>
+
+<script>
+  const queryInput = document.getElementById('query');
+  const submitBtn  = document.getElementById('submit');
+  const loadingEl  = document.getElementById('loading');
+  const resultsEl  = document.getElementById('results');
+
+  function setQuery(el) {
+    queryInput.value = el.textContent;
+    queryInput.focus();
+  }
+
+  async function doSearch() {
+    const q = queryInput.value.trim();
+    if (!q) return;
+
+    // Show loading
+    resultsEl.innerHTML = '';
+    loadingEl.style.display = 'block';
+    submitBtn.disabled = true;
+
+    try {
+      const res = await fetch('/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q })
+      });
+
+      const data = await res.json();
+      loadingEl.style.display = 'none';
+      submitBtn.disabled = false;
+
+      if (data.error) {
+        resultsEl.innerHTML = `<p class="error-msg">${data.error}</p>`;
+        return;
+      }
+
+      let html = `<div class="result-summary">${data.summary}</div>`;
+      html += `<div class="quotes-label">From the Sermons</div>`;
+
+      for (const q of data.quotes) {
+        html += `
+          <div class="quote-card">
+            <span class="quote-mark">"</span>
+            <p class="quote-text">${q.text}</p>
+            <div class="quote-meta">
+              <span><strong>${q.sermon}</strong></span>
+              ${q.scripture ? `<span>${q.scripture}</span>` : ''}
+              ${q.volume ? `<span>Vol. ${q.volume}</span>` : ''}
+            </div>
+          </div>`;
+      }
+
+      resultsEl.innerHTML = html;
+
+    } catch (err) {
+      loadingEl.style.display = 'none';
+      submitBtn.disabled = false;
+      resultsEl.innerHTML = `<p class="error-msg">Could not connect to the server. Make sure search.py is running.</p>`;
+    }
+  }
+
+  submitBtn.addEventListener('click', doSearch);
+  queryInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') doSearch();
+  });
+</script>
+</body>
+</html>
