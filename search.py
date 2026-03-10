@@ -155,4 +155,4 @@ def ask():
 
 if __name__ == "__main__":
     print("Ask Spurgeon is running at http://localhost:5000")
-    app.run(debug=False, port=7860, host="0.0.0.0")
+    app.run(debug=False, port=5000, host="0.0.0.0")
